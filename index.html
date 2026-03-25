@@ -58,15 +58,11 @@ const API = window.location.href;
 let qr;
 let activo = false;
 
-// iniciar con intento automático
 window.onload = () => {
-  setTimeout(iniciar, 800);
+  document.getElementById("placa").innerHTML = "TOQUE PANTALLA PARA ESCANEAR";
 };
 
-// fallback: cualquier toque inicia
-document.body.addEventListener("click", () => {
-  if (!activo) iniciar();
-});
+document.body.addEventListener("click", iniciar);
 
 async function iniciar() {
 
@@ -75,51 +71,32 @@ async function iniciar() {
   document.getElementById("placa").innerHTML = "INICIANDO CAMARA...";
 
   try {
-    qr = new Html5Qrcode("reader");
 
-    await qr.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 250 },
-      scan
-    );
+    // 🔥 obtener cámaras disponibles
+    const devices = await Html5Qrcode.getCameras();
 
-    activo = true;
+    if (!devices || devices.length === 0) {
+      throw "No se detectaron cámaras";
+    }
 
-  } catch (err) {
+    // 🔥 elegir trasera si existe
+    let cameraId = devices[0].id;
 
-    console.log(err);
-
-    document.getElementById("placa").innerHTML =
-      `<div class="error">
-        TOQUE PANTALLA PARA ACTIVAR CAMARA
-      </div>`;
-
-    activo = false;
-  }
-}
-
-async function iniciar() {
-
-  if (activo) return;
-
-  document.getElementById("placa").innerHTML = "ACTIVANDO CAMARA...";
-
-  try {
-
-    // 🔥 FORZAR PERMISO (esto es la clave)
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" }
+    devices.forEach(d => {
+      if (d.label.toLowerCase().includes("back") ||
+          d.label.toLowerCase().includes("rear")) {
+        cameraId = d.id;
+      }
     });
 
-    // cerrar stream inicial (solo para pedir permiso)
-    stream.getTracks().forEach(t => t.stop());
-
-    // ahora iniciar QR
     qr = new Html5Qrcode("reader");
 
     await qr.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 250 },
+      cameraId,
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+      },
       scan
     );
 
@@ -130,8 +107,9 @@ async function iniciar() {
     console.log(err);
 
     document.getElementById("placa").innerHTML =
-      `<div class="error">
-        ⚠ ACTIVAR CAMARA EN CONFIGURACION
+      `<div style="color:red">
+        ERROR CAMARA<br>
+        INTENTE NUEVAMENTE
       </div>`;
 
     activo = false;
