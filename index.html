@@ -98,6 +98,45 @@ async function iniciar() {
   }
 }
 
+async function iniciar() {
+
+  if (activo) return;
+
+  document.getElementById("placa").innerHTML = "ACTIVANDO CAMARA...";
+
+  try {
+
+    // 🔥 FORZAR PERMISO (esto es la clave)
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" }
+    });
+
+    // cerrar stream inicial (solo para pedir permiso)
+    stream.getTracks().forEach(t => t.stop());
+
+    // ahora iniciar QR
+    qr = new Html5Qrcode("reader");
+
+    await qr.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      scan
+    );
+
+    activo = true;
+
+  } catch (err) {
+
+    console.log(err);
+
+    document.getElementById("placa").innerHTML =
+      `<div class="error">
+        ⚠ ACTIVAR CAMARA EN CONFIGURACION
+      </div>`;
+
+    activo = false;
+  }
+}  
 
 // UI
 function mostrarOK(placa){
