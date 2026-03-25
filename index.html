@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:black;
+  color:white;
+  text-align:center;
+}
+
+#placa{
+  font-size:60px;
+  font-weight:bold;
+  margin-top:20px;
+}
+
+.ok{ color:#00ff00; }
+.error{ color:#ff3333; }
+
+#reader{
+  width:300px;
+  margin:auto;
+}
+
+table{
+  width:100%;
+  font-size:18px;
+  margin-top:20px;
+  background:white;
+  color:black;
+}
+
+button{
+  font-size:18px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="placa">ESCANEAR QR</div>
+
+<div id="reader"></div>
+
+<table id="tabla"></table>
+
+<div id="detalle"></div>
+
+<script>
+
+const API = window.location.href;
+
+let qr;
+let activo = false;
+
+// iniciar con intento automático
+window.onload = () => {
+  setTimeout(iniciar, 800);
+};
+
+// fallback: cualquier toque inicia
+document.body.addEventListener("click", () => {
+  if (!activo) iniciar();
+});
+
+async function iniciar() {
+
+  if (activo) return;
+
+  document.getElementById("placa").innerHTML = "INICIANDO CAMARA...";
+
+  try {
+    qr = new Html5Qrcode("reader");
+
+    await qr.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      scan
+    );
+
+    activo = true;
+
+  } catch (err) {
+
+    console.log(err);
+
+    document.getElementById("placa").innerHTML =
+      `<div class="error">
+        TOQUE PANTALLA PARA ACTIVAR CAMARA
+      </div>`;
+
+    activo = false;
+  }
+}
+
+
+// UI
+function mostrarOK(placa){
+  document.getElementById("placa").innerHTML =
+    `<div class="ok">${placa}</div><div>✔ PROCESADO</div>`;
+}
+
+function mostrarError(msg){
+  document.getElementById("placa").innerHTML =
+    `<div class="error">${msg}</div>`;
+}
+
+
+// RESTART
+function reiniciar(){
+  setTimeout(()=>{
+    document.getElementById("placa").innerHTML="ESCANEAR QR";
+    qr.start({facingMode:"environment"}, {fps:10, qrbox:250}, scan);
+  },2000);
+}
+
+
+// GRID
+async function cargarTabla(){
+  const res = await fetch(API);
+  const data = await res.json();
+
+  const t = document.getElementById("tabla");
+  t.innerHTML="";
+
+  if(!data.length) return;
+
+  t.innerHTML="<tr><th>Numero</th><th>Placa</th><th></th></tr>";
+
+  data.forEach(r=>{
+    t.innerHTML+=`
+      <tr>
+        <td>${r.Numero}</td>
+        <td>${r.Placa}</td>
+        <td><button onclick="ver('${r.Numero}')">Ver +</button></td>
+      </tr>`;
+  });
+}
+
+
+// DETALLE
+async function ver(numero){
+  const res = await fetch(API+"?numero="+numero);
+  const d = await res.json();
+
+  let html="";
+
+  for(let k in d){
+    html+=`<h3>${k}</h3>`;
+    for(let x in d[k]){
+      html+=`<b>${x}:</b> ${d[k][x]}<br>`;
+    }
+  }
+
+  document.getElementById("detalle").innerHTML=html;
+}
+
+
+// INIT GRID
+cargarTabla();
+
+</script>
+
+</body>
+</html>
